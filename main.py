@@ -1,8 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import psycopg
+import os
 
 app = FastAPI()
+db_host = os.getenv("DB_HOST", "localhost")
 
 class ItemCreate(BaseModel):
     name: str
@@ -14,7 +16,7 @@ def add_task(item: ItemCreate):
         dbname="project_db",
         user="runner",
         password="12345",
-        host="localhost",
+        host=db_host,
         port=5432,
     ) as conn:
         with conn.cursor() as cur:
@@ -42,7 +44,7 @@ def get_task(task_id: int):
         dbname="project_db",
         user="runner",
         password="12345",
-        host="localhost",
+        host=db_host,
         port=5432
     ) as conn:
         with conn.cursor() as cur:
@@ -65,7 +67,7 @@ def delete_task(task_id: int):
         dbname="project_db",
         user="runner",
         password="12345",
-        host="localhost",
+        host=db_host,
         port=5432
     ) as conn:
         with conn.cursor() as cur:
@@ -85,7 +87,7 @@ def show_db():
         dbname="project_db",
         user="runner",
         password="12345",
-        host="localhost",
+        host=db_host,
         port=5432
     ) as conn:
         with conn.cursor() as cur:
