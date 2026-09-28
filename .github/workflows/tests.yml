@@ -1,0 +1,11 @@
+name: run test
+on:
+  push:
+    branches:
+      - main
+jobs:
+  echo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: say wsp
+        run: echo "wsp"
