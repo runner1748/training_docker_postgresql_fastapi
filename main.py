@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import psycopg
 import os
-
+#:)
 app = FastAPI()
 db_host = os.getenv("DB_HOST", "localhost")
 
