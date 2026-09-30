@@ -21,7 +21,10 @@ jobs:
       - name: run tests
         run: |
           #starting ...
-          docker compose up
+          docker compose up -d
+
+          #wait till containers stat up ...
+          sleep 10
           
           #start test_01
           curl http://127.0.0.1:8080 > res.txt
