@@ -16,6 +16,16 @@ def get_conn():
         port=5432,
     )
 
+@app.get("/health", tags=["health"])
+def health():
+    try:
+        with get_conn() as conn:
+            conn.execute("SELECT 1")
+    except psycopg.OperationalError:
+        raise HTTPException(status_code=503, detail="db unavailable")
+    return {"status": "ok"}
+
+
 class ItemCreate(BaseModel):
     name: str
     status: str
