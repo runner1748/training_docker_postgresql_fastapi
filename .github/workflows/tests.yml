@@ -1,34 +1,54 @@
 name: test
 on: push
+
 jobs:
-  start_test:
+  api_test:
     runs-on: ubuntu-latest
     steps:
-      - name: Chekout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: set up python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12.3"
-
-      - name: install deps
-        run: | 
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          
-
-      - name: run tests
+      # .env в git нет (он в .gitignore), поэтому собираем его из GitHub Secrets
+      - name: Create .env
         run: |
-          #starting ...
-          docker compose up -d
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
 
-          #wait till containers stat up ...
-          sleep 10
-          
-          #start test_01
-          curl http://127.0.0.1:8080 > res.txt
-          
-          #reults : 
-          cat res.txt
-          #done
+      # --wait: ждём, пока db станет healthy, а app запустится (вместо sleep 10)
+      - name: Start containers
+        run: docker compose up -d --build --wait
+
+      # curl -f: код ответа 4xx/5xx -> ошибка -> шаг красный
+      # --retry-connrefused: uvicorn может стартовать пару секунд, пробуем ещё раз
+      - name: Create task
+        run: |
+          curl -f --retry 10 --retry-connrefused --retry-delay 2 \
+            -X POST http://127.0.0.1:8080/app/task \
+            -H "Content-Type: application/json" \
+            -d '{"name":"ci_test","status":"new"}'
+
+      - name: Get all tasks
+        run: curl -f http://127.0.0.1:8080/app/tasks
+
+      - name: Get task by id
+        run: curl -f http://127.0.0.1:8080/app/task/1
+
+      - name: Delete task
+        run: curl -f -X DELETE http://127.0.0.1:8080/app/task/1
+
+      # после удаления задачи должно быть 404, иначе тест провален
+      - name: Deleted task returns 404
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/app/task/1)
+          echo "HTTP $code"
+          test "$code" = "404"
+
+      # если что-то упало, показываем логи контейнеров, чтобы понять почему
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v
