@@ -19,7 +19,7 @@ jobs:
           fi
           printf '%s\n' "$ENV_FILE" > .env
 
-      # --wait: ждём, пока db станет healthy, а app запустится (вместо sleep 10)
+      # --wait: ждём, пока db и app станут healthy (вместо sleep 10)
       - name: Start containers
         run: docker compose up -d --build --wait
 
@@ -27,24 +27,27 @@ jobs:
       # --retry-connrefused: uvicorn может стартовать пару секунд, пробуем ещё раз
       - name: Create task
         run: |
-          curl -f --retry 10 --retry-connrefused --retry-delay 2 \
+          response=$(curl -f --retry 10 --retry-connrefused --retry-delay 2 \
             -X POST http://127.0.0.1:8080/app/task \
             -H "Content-Type: application/json" \
-            -d '{"name":"ci_test","status":"new"}'
+            -d '{"name":"ci_test","status":"new"}')
+          echo "$response"
+          echo "TASK_ID=$(echo "$response" | jq -r '.id')" >> "$GITHUB_ENV"
+
 
       - name: Get all tasks
         run: curl -f http://127.0.0.1:8080/app/tasks
 
       - name: Get task by id
-        run: curl -f http://127.0.0.1:8080/app/task/1
+        run: curl -f http://127.0.0.1:8080/app/task/$TASK_ID
 
       - name: Delete task
-        run: curl -f -X DELETE http://127.0.0.1:8080/app/task/1
+        run: curl -f -X DELETE http://127.0.0.1:8080/app/task/$TASK_ID
 
       # после удаления задачи должно быть 404, иначе тест провален
       - name: Deleted task returns 404
         run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/app/task/1)
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/app/task/$TASK_ID)
           echo "HTTP $code"
           test "$code" = "404"
 
