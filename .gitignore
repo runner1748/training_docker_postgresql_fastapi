@@ -6,3 +6,4 @@ notes
 backups/
 *.gz
 .env
+.md
