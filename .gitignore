@@ -4,3 +4,5 @@ __pycache__/
 .vscode/
 notes
 backups/
+*.gz
+.env
